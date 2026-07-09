@@ -2,6 +2,7 @@ import SwiftUI
 
 struct EditorView: View {
     @ObservedObject var state: EditorState
+    @Environment(\.dismiss) private var dismiss
 
     @State private var dragStart: CGPoint?
     @State private var dragRect: CGRect?
@@ -16,7 +17,17 @@ struct EditorView: View {
         }
         .navigationTitle("编辑")
         .navigationBarTitleDisplayMode(.inline)
+        // 隐藏系统返回键以禁用左边缘右滑返回手势，否则从左边缘开始框选会误触返回
+        .navigationBarBackButtonHidden(true)
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "chevron.left")
+                }
+            }
+
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Button {
                     guard let result = state.renderResult() else { return }
