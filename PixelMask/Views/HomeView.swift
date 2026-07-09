@@ -16,7 +16,7 @@ struct HomeView: View {
                     .foregroundStyle(.tint)
 
                 VStack(spacing: 8) {
-                    Text("DAMA")
+                    Text("PixelMask")
                         .font(.largeTitle.bold())
                     Text("自动识别图片中的隐私信息并打码\n完全离线，图片不会离开您的设备")
                         .font(.subheadline)

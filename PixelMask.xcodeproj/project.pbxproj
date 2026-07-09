@@ -7,13 +7,13 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		DA00000000000000000000FC /* Dama.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Dama.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		DA00000000000000000000FC /* PixelMask.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PixelMask.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		DA00000000000000000000FE /* Dama */ = {
+		DA00000000000000000000FE /* PixelMask */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Dama;
+			path = PixelMask;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -30,7 +30,7 @@
 		DA00000000000000000000F3 = {
 			isa = PBXGroup;
 			children = (
-				DA00000000000000000000FE /* Dama */,
+				DA00000000000000000000FE /* PixelMask */,
 				DA00000000000000000000FD /* Products */,
 			);
 			sourceTree = "<group>";
@@ -38,7 +38,7 @@
 		DA00000000000000000000FD /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				DA00000000000000000000FC /* Dama.app */,
+				DA00000000000000000000FC /* PixelMask.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -46,9 +46,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		DA00000000000000000000FB /* Dama */ = {
+		DA00000000000000000000FB /* PixelMask */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = DA0000000000000000000020 /* Build configuration list for PBXNativeTarget "Dama" */;
+			buildConfigurationList = DA0000000000000000000020 /* Build configuration list for PBXNativeTarget "PixelMask" */;
 			buildPhases = (
 				DA00000000000000000000F8 /* Sources */,
 				DA00000000000000000000F9 /* Frameworks */,
@@ -57,13 +57,13 @@
 			buildRules = (
 			);
 			fileSystemSynchronizedGroups = (
-				DA00000000000000000000FE /* Dama */,
+				DA00000000000000000000FE /* PixelMask */,
 			);
-			name = Dama;
+			name = PixelMask;
 			packageProductDependencies = (
 			);
-			productName = Dama;
-			productReference = DA00000000000000000000FC /* Dama.app */;
+			productName = PixelMask;
+			productReference = DA00000000000000000000FC /* PixelMask.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -81,7 +81,7 @@
 					};
 				};
 			};
-			buildConfigurationList = DA00000000000000000000F7 /* Build configuration list for PBXProject "Dama" */;
+			buildConfigurationList = DA00000000000000000000F7 /* Build configuration list for PBXProject "PixelMask" */;
 			developmentRegion = "zh-Hans";
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -98,7 +98,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				DA00000000000000000000FB /* Dama */,
+				DA00000000000000000000FB /* PixelMask */,
 			);
 		};
 /* End PBXProject section */
@@ -120,7 +120,7 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		DA000000000000000000001E /* Debug configuration for PBXProject "Dama" */ = {
+		DA000000000000000000001E /* Debug configuration for PBXProject "PixelMask" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -183,7 +183,7 @@
 			};
 			name = Debug;
 		};
-		DA000000000000000000001F /* Release configuration for PBXProject "Dama" */ = {
+		DA000000000000000000001F /* Release configuration for PBXProject "PixelMask" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -239,7 +239,7 @@
 			};
 			name = Release;
 		};
-		DA0000000000000000000021 /* Debug configuration for PBXNativeTarget "Dama" */ = {
+		DA0000000000000000000021 /* Debug configuration for PBXNativeTarget "PixelMask" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -247,7 +247,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = DAMA;
+				INFOPLIST_KEY_CFBundleDisplayName = PixelMask;
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "保存打码后的图片到您的相册。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -259,7 +259,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.opendama.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pixelmask.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -267,7 +267,7 @@
 			};
 			name = Debug;
 		};
-		DA0000000000000000000022 /* Release configuration for PBXNativeTarget "Dama" */ = {
+		DA0000000000000000000022 /* Release configuration for PBXNativeTarget "PixelMask" */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -275,7 +275,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = DAMA;
+				INFOPLIST_KEY_CFBundleDisplayName = PixelMask;
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "保存打码后的图片到您的相册。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -287,7 +287,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.opendama.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pixelmask.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -298,19 +298,19 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		DA00000000000000000000F7 /* Build configuration list for PBXProject "Dama" */ = {
+		DA00000000000000000000F7 /* Build configuration list for PBXProject "PixelMask" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				DA000000000000000000001E /* Debug configuration for PBXProject "Dama" */,
-				DA000000000000000000001F /* Release configuration for PBXProject "Dama" */,
+				DA000000000000000000001E /* Debug configuration for PBXProject "PixelMask" */,
+				DA000000000000000000001F /* Release configuration for PBXProject "PixelMask" */,
 			);
 			defaultConfigurationName = Release;
 		};
-		DA0000000000000000000020 /* Build configuration list for PBXNativeTarget "Dama" */ = {
+		DA0000000000000000000020 /* Build configuration list for PBXNativeTarget "PixelMask" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				DA0000000000000000000021 /* Debug configuration for PBXNativeTarget "Dama" */,
-				DA0000000000000000000022 /* Release configuration for PBXNativeTarget "Dama" */,
+				DA0000000000000000000021 /* Debug configuration for PBXNativeTarget "PixelMask" */,
+				DA0000000000000000000022 /* Release configuration for PBXNativeTarget "PixelMask" */,
 			);
 			defaultConfigurationName = Release;
 		};

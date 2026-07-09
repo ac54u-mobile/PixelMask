@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "DA00000000000000000000FB"
-               BuildableName = "Dama.app"
-               BlueprintName = "Dama"
-               ReferencedContainer = "container:Dama.xcodeproj">
+               BuildableName = "PixelMask.app"
+               BlueprintName = "PixelMask"
+               ReferencedContainer = "container:PixelMask.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -45,9 +45,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "DA00000000000000000000FB"
-            BuildableName = "Dama.app"
-            BlueprintName = "Dama"
-            ReferencedContainer = "container:Dama.xcodeproj">
+            BuildableName = "PixelMask.app"
+            BlueprintName = "PixelMask"
+            ReferencedContainer = "container:PixelMask.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -62,9 +62,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "DA00000000000000000000FB"
-            BuildableName = "Dama.app"
-            BlueprintName = "Dama"
-            ReferencedContainer = "container:Dama.xcodeproj">
+            BuildableName = "PixelMask.app"
+            BlueprintName = "PixelMask"
+            ReferencedContainer = "container:PixelMask.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

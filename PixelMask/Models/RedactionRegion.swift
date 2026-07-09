@@ -68,7 +68,7 @@ enum RedactionStyle: String, CaseIterable, Identifiable {
         switch self {
         case .solid: return "色块"
         case .pixelate: return "像素化"
-        case .blur: return "模糊"
+        case .blur: return "毛玻璃"
         case .marker: return "马克笔"
         case .hideText: return "隐藏文字"
         }

@@ -79,12 +79,23 @@ final class ImageRedactor {
         return result.composited(over: image)
     }
 
+    /// 毛玻璃：高斯模糊 + 降饱和微提亮 + 半透明白色蒙层。
     private func blur(_ image: CIImage, in rect: CGRect) -> CIImage {
-        let radius = max(12, min(rect.width, rect.height) / 5)
+        let radius = max(16, min(rect.width, rect.height) / 4)
         guard let filter = CIFilter(name: "CIGaussianBlur") else { return image }
         filter.setValue(image.clampedToExtent(), forKey: kCIInputImageKey)
         filter.setValue(radius, forKey: kCIInputRadiusKey)
-        guard let result = filter.outputImage?.cropped(to: rect) else { return image }
+        guard var result = filter.outputImage?.cropped(to: rect) else { return image }
+
+        if let controls = CIFilter(name: "CIColorControls") {
+            controls.setValue(result, forKey: kCIInputImageKey)
+            controls.setValue(0.72, forKey: kCIInputSaturationKey)
+            controls.setValue(0.05, forKey: kCIInputBrightnessKey)
+            result = controls.outputImage ?? result
+        }
+
+        let frost = CIImage(color: CIColor(red: 1, green: 1, blue: 1, alpha: 0.24)).cropped(to: rect)
+        result = frost.composited(over: result).cropped(to: rect)
         return result.composited(over: image)
     }
 

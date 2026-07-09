@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct DamaApp: App {
+struct PixelMaskApp: App {
     var body: some Scene {
         WindowGroup {
             HomeView()

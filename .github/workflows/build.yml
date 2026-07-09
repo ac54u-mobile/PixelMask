@@ -14,13 +14,13 @@ jobs:
 
       - name: Build unsigned IPA
         run: |
-          xcodebuild clean -project Dama.xcodeproj -scheme Dama
+          xcodebuild clean -project PixelMask.xcodeproj -scheme PixelMask
 
           # 编译并归档（禁用签名，TrollStore 可直接安装）
           xcodebuild archive \
-            -project Dama.xcodeproj \
-            -scheme Dama \
-            -archivePath ./build/Dama.xcarchive \
+            -project PixelMask.xcodeproj \
+            -scheme PixelMask \
+            -archivePath ./build/PixelMask.xcarchive \
             -destination 'generic/platform=iOS' \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
@@ -28,15 +28,15 @@ jobs:
             ONLY_ACTIVE_ARCH=NO
 
           mkdir -p Payload
-          cp -R ./build/Dama.xcarchive/Products/Applications/Dama.app Payload/
-          zip -r Dama-unsigned.ipa Payload
+          cp -R ./build/PixelMask.xcarchive/Products/Applications/PixelMask.app Payload/
+          zip -r PixelMask-unsigned.ipa Payload
           rm -rf Payload
 
-          ls -lh Dama-unsigned.ipa
+          ls -lh PixelMask-unsigned.ipa
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Dama-unsigned-ipa
-          path: Dama-unsigned.ipa
+          name: PixelMask-unsigned-ipa
+          path: PixelMask-unsigned.ipa
           retention-days: 30
