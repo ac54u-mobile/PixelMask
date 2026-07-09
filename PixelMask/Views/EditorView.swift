@@ -64,6 +64,12 @@ struct EditorView: View {
     }
 
     private var canvas: some View {
+        ZoomableScrollView {
+            canvasContent
+        }
+    }
+
+    private var canvasContent: some View {
         GeometryReader { geometry in
             let containerSize = geometry.size
             ZStack {
@@ -247,7 +253,7 @@ struct EditorView: View {
             }
             .padding(.horizontal, 12)
 
-            Text("轻点文字整行打码 · 拖动框选任意区域 · 长按对比原图")
+            Text("轻点整行打码 · 拖动框选 · 双指缩放 · 长按看原图")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
         }
