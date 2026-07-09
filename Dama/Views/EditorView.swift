@@ -5,7 +5,8 @@ struct EditorView: View {
 
     @State private var dragStart: CGPoint?
     @State private var dragRect: CGRect?
-    @State private var showResult = false
+    @State private var showShareSheet = false
+    @State private var justSaved = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -15,17 +16,33 @@ struct EditorView: View {
         .navigationTitle("编辑")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItemGroup(placement: .topBarTrailing) {
                 Button {
-                    showResult = true
+                    guard let result = state.renderResult() else { return }
+                    UIImageWriteToSavedPhotosAlbum(result, nil, nil, nil)
+                    justSaved = true
+                    Task {
+                        try? await Task.sleep(for: .seconds(1.5))
+                        justSaved = false
+                    }
                 } label: {
-                    Text("完成").bold()
+                    Image(systemName: justSaved ? "checkmark" : "square.and.arrow.down")
+                }
+                .disabled(state.image == nil)
+
+                Button {
+                    showShareSheet = true
+                } label: {
+                    Image(systemName: "square.and.arrow.up")
                 }
                 .disabled(state.image == nil)
             }
         }
-        .navigationDestination(isPresented: $showResult) {
-            ResultView(state: state)
+        .sheet(isPresented: $showShareSheet) {
+            if let result = state.renderResult(),
+               let data = result.jpegData(compressionQuality: 0.92) {
+                ShareSheet(items: [ShareableImage.temporaryFileURL(for: data) ?? data])
+            }
         }
     }
 
@@ -35,13 +52,13 @@ struct EditorView: View {
             ZStack {
                 Color(.systemGroupedBackground)
 
-                if let image = state.image {
-                    Image(uiImage: image)
+                if let displayed = state.previewImage ?? state.image {
+                    Image(uiImage: displayed)
                         .resizable()
                         .scaledToFit()
                         .frame(width: containerSize.width, height: containerSize.height)
 
-                    regionOverlays(imageSize: image.size, containerSize: containerSize)
+                    regionOverlays(imageSize: displayed.size, containerSize: containerSize)
 
                     if let dragRect {
                         Rectangle()
@@ -68,18 +85,16 @@ struct EditorView: View {
         }
     }
 
+    /// 打码效果实时显示在图上，这里只画细边框提示可点按：
+    /// 实线 = 已打码（点按取消），虚线 = 检测到但未启用（点按开启）。
     private func regionOverlays(imageSize: CGSize, containerSize: CGSize) -> some View {
         ForEach(state.regions) { region in
             let viewRect = CoordinateMapper.toView(region.rect, imageSize: imageSize, containerSize: containerSize)
             if viewRect.width > 0 {
                 RoundedRectangle(cornerRadius: 3)
-                    .fill(region.isEnabled ? Color.accentColor.opacity(0.45) : Color.clear)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 3)
-                            .stroke(
-                                region.isEnabled ? Color.accentColor : Color.secondary.opacity(0.7),
-                                style: StrokeStyle(lineWidth: 1.5, dash: region.isEnabled ? [] : [4, 3])
-                            )
+                    .stroke(
+                        region.isEnabled ? Color.accentColor.opacity(0.85) : Color.secondary.opacity(0.7),
+                        style: StrokeStyle(lineWidth: 1.5, dash: region.isEnabled ? [] : [4, 3])
                     )
                     .frame(width: max(viewRect.width, 10), height: max(viewRect.height, 10))
                     .position(x: viewRect.midX, y: viewRect.midY)
@@ -155,7 +170,7 @@ struct EditorView: View {
             }
             .padding(.horizontal, 12)
 
-            Text("轻点文字整行打码 · 轻点色块取消 · 拖动框选任意区域")
+            Text("轻点文字整行打码 · 轻点已打码区域取消 · 拖动框选任意区域")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
         }

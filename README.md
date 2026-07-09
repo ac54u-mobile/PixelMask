@@ -36,6 +36,6 @@ Dama/
   Models/       # 区域与样式模型 (RedactionRegion)
   Services/     # 检测引擎与敏感信息分类 (DetectionEngine, SensitiveTextClassifier)
   Redaction/    # 打码渲染与坐标换算 (ImageRedactor, CoordinateMapper)
-  Views/        # SwiftUI 界面 (Home, Editor, Result)
+  Views/        # SwiftUI 界面 (Home, Editor)
 .github/workflows/build.yml  # CI：产出未签名 IPA
 ```
