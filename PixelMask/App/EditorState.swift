@@ -1,5 +1,13 @@
 import SwiftUI
 
+enum ExportFormat: String, CaseIterable, Identifiable {
+    case jpeg
+    case png
+
+    var id: String { rawValue }
+    var title: String { self == .jpeg ? "JPEG" : "PNG" }
+}
+
 @MainActor
 final class EditorState: ObservableObject {
     @Published var image: UIImage?
@@ -40,6 +48,13 @@ final class EditorState: ObservableObject {
         }
     }
 
+    @Published var exportFormat: ExportFormat {
+        didSet { UserDefaults.standard.set(exportFormat.rawValue, forKey: "exportFormat") }
+    }
+    @Published var jpegQuality: Double {
+        didSet { UserDefaults.standard.set(jpegQuality, forKey: "jpegQuality") }
+    }
+
     private var undoStack: [[RedactionRegion]] = []
     private var redoStack: [[RedactionRegion]] = []
 
@@ -55,6 +70,9 @@ final class EditorState: ObservableObject {
         )
         watermarkEnabled = defaults.bool(forKey: "watermarkEnabled")
         watermarkText = defaults.string(forKey: "watermarkText") ?? "仅供验证使用"
+        exportFormat = ExportFormat(rawValue: defaults.string(forKey: "exportFormat") ?? "") ?? .jpeg
+        let storedQuality = defaults.double(forKey: "jpegQuality")
+        jpegQuality = storedQuality > 0 ? storedQuality : 0.92
     }
 
     var enabledCount: Int { regions.filter(\.isEnabled).count }
@@ -192,6 +210,17 @@ final class EditorState: ObservableObject {
                 guard self.renderGeneration == generation else { return }
                 self.previewImage = rendered
             }
+        }
+    }
+
+    /// 按导出设置编码，供分享使用。
+    func exportData() -> (data: Data, fileExtension: String)? {
+        guard let result = renderResult() else { return nil }
+        switch exportFormat {
+        case .png:
+            return result.pngData().map { ($0, "png") }
+        case .jpeg:
+            return result.jpegData(compressionQuality: jpegQuality).map { ($0, "jpg") }
         }
     }
 

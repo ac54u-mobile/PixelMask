@@ -1,10 +1,13 @@
 import PhotosUI
 import SwiftUI
+import UIKit
 
 struct HomeView: View {
-    @StateObject private var state = EditorState()
-    @State private var pickerItem: PhotosPickerItem?
+    @State private var sessionStates: [EditorState] = []
+    @State private var pickerItems: [PhotosPickerItem] = []
     @State private var showEditor = false
+    @State private var showCamera = false
+    @State private var isLoading = false
 
     var body: some View {
         NavigationStack {
@@ -24,14 +27,33 @@ struct HomeView: View {
                         .multilineTextAlignment(.center)
                 }
 
-                PhotosPicker(selection: $pickerItem, matching: .images) {
-                    Label("选择图片", systemImage: "photo.on.rectangle")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
+                VStack(spacing: 12) {
+                    PhotosPicker(selection: $pickerItems, maxSelectionCount: 9, matching: .images) {
+                        Label("选择图片（可多选）", systemImage: "photo.on.rectangle")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                    }
+                    .buttonStyle(.borderedProminent)
+
+                    if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                        Button {
+                            showCamera = true
+                        } label: {
+                            Label("拍照打码", systemImage: "camera")
+                                .font(.headline)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                        }
+                        .buttonStyle(.bordered)
+                    }
                 }
-                .buttonStyle(.borderedProminent)
                 .padding(.horizontal, 40)
+                .disabled(isLoading)
+
+                if isLoading {
+                    ProgressView("载入图片…")
+                }
 
                 Spacer()
 
@@ -42,18 +64,37 @@ struct HomeView: View {
                     .padding(.bottom, 12)
             }
             .navigationDestination(isPresented: $showEditor) {
-                EditorView(state: state)
+                BatchEditorView(states: sessionStates)
             }
-            .onChange(of: pickerItem) { _, newItem in
-                guard let newItem else { return }
+            .onChange(of: pickerItems) { _, newItems in
+                guard !newItems.isEmpty else { return }
+                isLoading = true
                 Task {
-                    if let data = try? await newItem.loadTransferable(type: Data.self),
-                       let image = UIImage(data: data) {
-                        state.load(image: image)
+                    var states: [EditorState] = []
+                    for item in newItems {
+                        if let data = try? await item.loadTransferable(type: Data.self),
+                           let image = UIImage(data: data) {
+                            let state = EditorState()
+                            state.load(image: image)
+                            states.append(state)
+                        }
+                    }
+                    isLoading = false
+                    pickerItems = []
+                    if !states.isEmpty {
+                        sessionStates = states
                         showEditor = true
                     }
-                    pickerItem = nil
                 }
+            }
+            .fullScreenCover(isPresented: $showCamera) {
+                CameraPicker { image in
+                    let state = EditorState()
+                    state.load(image: image)
+                    sessionStates = [state]
+                    showEditor = true
+                }
+                .ignoresSafeArea()
             }
         }
     }

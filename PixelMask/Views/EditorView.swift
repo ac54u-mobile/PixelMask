@@ -9,6 +9,7 @@ struct EditorView: View {
     @State private var showShareSheet = false
     @State private var showSettings = false
     @State private var justSaved = false
+    @State private var showOriginal = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -51,9 +52,10 @@ struct EditorView: View {
             }
         }
         .sheet(isPresented: $showShareSheet) {
-            if let result = state.renderResult(),
-               let data = result.jpegData(compressionQuality: 0.92) {
-                ShareSheet(items: [ShareableImage.temporaryFileURL(for: data) ?? data])
+            if let export = state.exportData() {
+                ShareSheet(items: [
+                    ShareableImage.temporaryFileURL(for: export.data, fileExtension: export.fileExtension) ?? export.data,
+                ])
             }
         }
         .sheet(isPresented: $showSettings) {
@@ -67,7 +69,7 @@ struct EditorView: View {
             ZStack {
                 Color(.systemGroupedBackground)
 
-                if let displayed = state.previewImage ?? state.image {
+                if let displayed = showOriginal ? state.image : (state.previewImage ?? state.image) {
                     Image(uiImage: displayed)
                         .resizable()
                         .scaledToFit()
@@ -88,6 +90,18 @@ struct EditorView: View {
                             .padding(16)
                             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
                     }
+
+                    if showOriginal {
+                        VStack {
+                            Text("原图")
+                                .font(.caption.bold())
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(.regularMaterial, in: Capsule())
+                            Spacer()
+                        }
+                        .padding(.top, 12)
+                    }
                 }
             }
             .contentShape(Rectangle())
@@ -96,6 +110,10 @@ struct EditorView: View {
                 guard let image = state.image else { return }
                 let point = CoordinateMapper.toImage(location, imageSize: image.size, containerSize: containerSize)
                 state.handleTap(at: point)
+            }
+            .onLongPressGesture(minimumDuration: 0.25, maximumDistance: 10) {
+            } onPressingChanged: { pressing in
+                showOriginal = pressing && state.image != nil
             }
         }
     }
@@ -229,7 +247,7 @@ struct EditorView: View {
             }
             .padding(.horizontal, 12)
 
-            Text("轻点文字整行打码 · 轻点已打码区域取消 · 拖动框选任意区域")
+            Text("轻点文字整行打码 · 拖动框选任意区域 · 长按对比原图")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
         }

@@ -42,6 +42,27 @@ struct SettingsSheet: View {
                 } footer: {
                     Text("半透明文字水印会斜向平铺在整张图上，防止图片被挪作他用。")
                 }
+
+                Section {
+                    Picker("格式", selection: $state.exportFormat) {
+                        ForEach(ExportFormat.allCases) { format in
+                            Text(format.title).tag(format)
+                        }
+                    }
+                    if state.exportFormat == .jpeg {
+                        HStack {
+                            Text("画质")
+                            Slider(value: $state.jpegQuality, in: 0.5...1.0, step: 0.05)
+                            Text("\(Int(state.jpegQuality * 100))%")
+                                .font(.footnote.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                } header: {
+                    Text("导出")
+                } footer: {
+                    Text("格式与画质在分享时生效；保存到相册由系统决定编码。")
+                }
             }
             .navigationTitle("设置")
             .navigationBarTitleDisplayMode(.inline)
