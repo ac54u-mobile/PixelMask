@@ -15,6 +15,7 @@ struct EditorView: View {
         case move(id: UUID, base: RedactionRegion)
     }
     @State private var dragMode: CanvasDragMode?
+    @State private var rotationTarget: (id: UUID, base: RedactionRegion)?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -69,8 +70,32 @@ struct EditorView: View {
     }
 
     private var canvas: some View {
-        ZoomableScrollView {
-            canvasContent
+        GeometryReader { geometry in
+            ZoomableScrollView(onRotate: { phase in
+                handleCanvasRotation(phase, containerSize: geometry.size)
+            }) {
+                canvasContent
+            }
+        }
+    }
+
+    /// 双指捻转：手指落在已打码区域上则旋转该区域。
+    private func handleCanvasRotation(_ phase: CanvasRotationPhase, containerSize: CGSize) -> Bool {
+        guard let image = state.image else { return false }
+        switch phase {
+        case .began(let location):
+            let point = CoordinateMapper.toImage(location, imageSize: image.size, containerSize: containerSize)
+            guard let region = state.enabledRegion(at: point) else { return false }
+            rotationTarget = (region.id, region)
+            state.beginRegionDrag()
+            return true
+        case .changed(let angle, _):
+            guard let target = rotationTarget else { return false }
+            state.rotateRegion(id: target.id, base: target.base, delta: angle)
+            return true
+        case .ended:
+            rotationTarget = nil
+            return true
         }
     }
 
@@ -285,7 +310,7 @@ struct EditorView: View {
             }
             .padding(.horizontal, 12)
 
-            Text("轻点整行打码 · 空白处框选 · 拖动区域移动 · 双指缩放")
+            Text("轻点整行打码 · 空白处框选 · 拖动移动 · 双指旋转区域")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
         }

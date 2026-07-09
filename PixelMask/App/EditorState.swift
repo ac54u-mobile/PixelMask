@@ -159,6 +159,22 @@ final class EditorState: ObservableObject {
         schedulePreview()
     }
 
+    /// 以旋转开始时的区域状态（base）为基准旋转 delta 弧度，避免逐帧累积误差。
+    func rotateRegion(id: UUID, base: RedactionRegion, delta: CGFloat) {
+        guard let index = regions.firstIndex(where: { $0.id == id }) else { return }
+        var rotated = base
+        if let quad = base.quad {
+            rotated.quad = quad.rotated(by: delta)
+        } else if abs(delta) < 0.02 {
+            // 接近原角度时吸附回矩形
+            rotated.quad = nil
+        } else {
+            rotated.quad = Quad(rect: base.rect).rotated(by: delta)
+        }
+        regions[index] = rotated
+        schedulePreview()
+    }
+
     /// 命中已启用的区域则返回之（拖动移动的起点判定）。
     func enabledRegion(at imagePoint: CGPoint) -> RedactionRegion? {
         regions.last { region in

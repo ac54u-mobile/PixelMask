@@ -50,6 +50,40 @@ struct Quad: Equatable {
         return CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
     }
 
+    init(topLeft: CGPoint, topRight: CGPoint, bottomRight: CGPoint, bottomLeft: CGPoint) {
+        self.topLeft = topLeft
+        self.topRight = topRight
+        self.bottomRight = bottomRight
+        self.bottomLeft = bottomLeft
+    }
+
+    init(rect: CGRect) {
+        topLeft = CGPoint(x: rect.minX, y: rect.minY)
+        topRight = CGPoint(x: rect.maxX, y: rect.minY)
+        bottomRight = CGPoint(x: rect.maxX, y: rect.maxY)
+        bottomLeft = CGPoint(x: rect.minX, y: rect.maxY)
+    }
+
+    /// 绕重心旋转。
+    func rotated(by angle: CGFloat) -> Quad {
+        let cx = points.map(\.x).reduce(0, +) / 4
+        let cy = points.map(\.y).reduce(0, +) / 4
+        func rotate(_ p: CGPoint) -> CGPoint {
+            let dx = p.x - cx
+            let dy = p.y - cy
+            return CGPoint(
+                x: cx + dx * cos(angle) - dy * sin(angle),
+                y: cy + dx * sin(angle) + dy * cos(angle)
+            )
+        }
+        return Quad(
+            topLeft: rotate(topLeft),
+            topRight: rotate(topRight),
+            bottomRight: rotate(bottomRight),
+            bottomLeft: rotate(bottomLeft)
+        )
+    }
+
     /// 整体平移。
     func offset(dx: CGFloat, dy: CGFloat) -> Quad {
         Quad(
