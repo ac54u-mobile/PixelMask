@@ -1,9 +1,16 @@
 import CoreImage
 import UIKit
 
-/// 将启用的区域按所选样式渲染进图片。
+/// 将启用的区域按所选样式渲染进图片，支持水平矩形与任意四边形（斜向文字）。
 final class ImageRedactor {
     private let ciContext = CIContext(options: nil)
+
+    private struct Target {
+        let path: UIBezierPath
+        /// path 的外接矩形（已裁剪到图内），像素化/模糊在此范围内计算
+        let rect: CGRect
+        let quad: Quad?
+    }
 
     func render(
         image: UIImage,
@@ -16,61 +23,106 @@ final class ImageRedactor {
         let imageSize = CGSize(width: cgImage.width, height: cgImage.height)
         let bounds = CGRect(origin: .zero, size: imageSize)
 
-        let activeRects = regions
-            .filter(\.isEnabled)
-            .map { $0.rect.insetBy(dx: -2, dy: -2).intersection(bounds) }
-            .filter { !$0.isNull && $0.width >= 1 && $0.height >= 1 }
-
-        guard !activeRects.isEmpty || watermark != nil else { return image }
-
-        var output = CIImage(cgImage: cgImage)
-
-        switch style {
-        case .pixelate:
-            for rect in activeRects {
-                output = pixelate(output, in: ciRect(rect, imageHeight: imageSize.height))
+        let targets: [Target] = regions.filter(\.isEnabled).compactMap { region in
+            if let quad = region.quad?.expanded(by: 2) {
+                let rect = quad.boundingRect.intersection(bounds)
+                guard !rect.isNull, rect.width >= 1, rect.height >= 1 else { return nil }
+                let path = UIBezierPath()
+                path.move(to: quad.topLeft)
+                path.addLine(to: quad.topRight)
+                path.addLine(to: quad.bottomRight)
+                path.addLine(to: quad.bottomLeft)
+                path.close()
+                return Target(path: path, rect: rect, quad: quad)
             }
-        case .blur:
-            for rect in activeRects {
-                output = blur(output, in: ciRect(rect, imageHeight: imageSize.height))
-            }
-        case .solid, .marker, .hideText:
-            break
+            let rect = region.rect.insetBy(dx: -2, dy: -2).intersection(bounds)
+            guard !rect.isNull, rect.width >= 1, rect.height >= 1 else { return nil }
+            return Target(path: UIBezierPath(rect: rect), rect: rect, quad: nil)
         }
 
-        guard let filtered = ciContext.createCGImage(output, from: CGRect(origin: .zero, size: imageSize)) else {
-            return image
-        }
+        guard !targets.isEmpty || watermark != nil else { return image }
+
+        let sourceCI = CIImage(cgImage: cgImage)
 
         let format = UIGraphicsImageRendererFormat.default()
         format.scale = 1
         return UIGraphicsImageRenderer(size: imageSize, format: format).image { context in
-            UIImage(cgImage: filtered).draw(in: CGRect(origin: .zero, size: imageSize))
+            image.draw(in: CGRect(origin: .zero, size: imageSize))
 
-            switch style {
-            case .solid:
-                solidColor.setFill()
-                for rect in activeRects {
-                    context.fill(rect)
+            for target in targets {
+                switch style {
+                case .solid:
+                    solidColor.setFill()
+                    target.path.fill()
+                case .marker:
+                    drawMarker(over: target, in: context.cgContext)
+                case .hideText:
+                    let color = averageEdgeColor(of: target.rect, source: sourceCI, imageSize: imageSize) ?? .white
+                    color.setFill()
+                    target.path.fill()
+                case .pixelate, .blur:
+                    guard let filtered = filteredCrop(source: sourceCI, rect: target.rect, imageHeight: imageSize.height, style: style) else { continue }
+                    let cg = context.cgContext
+                    cg.saveGState()
+                    cg.addPath(target.path.cgPath)
+                    cg.clip()
+                    UIImage(cgImage: filtered).draw(in: target.rect)
+                    cg.restoreGState()
                 }
-            case .marker:
-                for rect in activeRects {
-                    let path = UIBezierPath(roundedRect: rect, cornerRadius: rect.height / 2)
-                    UIColor.black.withAlphaComponent(0.92).setFill()
-                    path.fill()
-                }
-            case .hideText:
-                for rect in activeRects {
-                    hideText(rect: rect, cgImage: filtered, imageSize: imageSize, context: context)
-                }
-            case .pixelate, .blur:
-                break
             }
 
             if let watermark {
                 drawTiledWatermark(watermark, imageSize: imageSize, cgContext: context.cgContext)
             }
         }
+    }
+
+    /// 马克笔：沿区域中轴画一条圆头粗线，斜向区域自然跟随倾角。
+    private func drawMarker(over target: Target, in cg: CGContext) {
+        let start: CGPoint
+        let end: CGPoint
+        let width: CGFloat
+        if let quad = target.quad {
+            start = CGPoint(x: (quad.topLeft.x + quad.bottomLeft.x) / 2, y: (quad.topLeft.y + quad.bottomLeft.y) / 2)
+            end = CGPoint(x: (quad.topRight.x + quad.bottomRight.x) / 2, y: (quad.topRight.y + quad.bottomRight.y) / 2)
+            let leftHeight = hypot(quad.bottomLeft.x - quad.topLeft.x, quad.bottomLeft.y - quad.topLeft.y)
+            let rightHeight = hypot(quad.bottomRight.x - quad.topRight.x, quad.bottomRight.y - quad.topRight.y)
+            width = max((leftHeight + rightHeight) / 2, 4)
+        } else {
+            start = CGPoint(x: target.rect.minX, y: target.rect.midY)
+            end = CGPoint(x: target.rect.maxX, y: target.rect.midY)
+            width = max(target.rect.height, 4)
+        }
+        cg.saveGState()
+        cg.setStrokeColor(UIColor.black.withAlphaComponent(0.92).cgColor)
+        cg.setLineWidth(width)
+        cg.setLineCap(.round)
+        cg.move(to: start)
+        cg.addLine(to: end)
+        cg.strokePath()
+        cg.restoreGState()
+    }
+
+    /// 对外接矩形区域做像素化/模糊，返回该区域的位图（由调用方按路径裁剪绘制）。
+    private func filteredCrop(source: CIImage, rect: CGRect, imageHeight: CGFloat, style: RedactionStyle) -> CGImage? {
+        let ciRect = ciRect(rect, imageHeight: imageHeight)
+        let filter: CIFilter?
+        switch style {
+        case .pixelate:
+            filter = CIFilter(name: "CIPixellate")
+            // 像素块大小随区域尺寸自适应，保证小区域也被充分遮盖
+            filter?.setValue(max(10, min(rect.width, rect.height) / 4), forKey: kCIInputScaleKey)
+            filter?.setValue(CIVector(x: ciRect.midX, y: ciRect.midY), forKey: kCIInputCenterKey)
+        case .blur:
+            filter = CIFilter(name: "CIGaussianBlur")
+            filter?.setValue(max(12, min(rect.width, rect.height) / 5), forKey: kCIInputRadiusKey)
+        default:
+            filter = nil
+        }
+        guard let filter else { return nil }
+        filter.setValue(source.clampedToExtent(), forKey: kCIInputImageKey)
+        guard let output = filter.outputImage?.cropped(to: ciRect) else { return nil }
+        return ciContext.createCGImage(output, from: ciRect)
     }
 
     /// 斜向平铺的半透明文字水印。
@@ -111,35 +163,8 @@ final class ImageRedactor {
         cgContext.restoreGState()
     }
 
-    private func pixelate(_ image: CIImage, in rect: CGRect) -> CIImage {
-        // 像素块大小随区域尺寸自适应，保证小区域也被充分遮盖
-        let scale = max(10, min(rect.width, rect.height) / 4)
-        guard let filter = CIFilter(name: "CIPixellate") else { return image }
-        filter.setValue(image.clampedToExtent(), forKey: kCIInputImageKey)
-        filter.setValue(scale, forKey: kCIInputScaleKey)
-        filter.setValue(CIVector(x: rect.midX, y: rect.midY), forKey: kCIInputCenterKey)
-        guard let result = filter.outputImage?.cropped(to: rect) else { return image }
-        return result.composited(over: image)
-    }
-
-    private func blur(_ image: CIImage, in rect: CGRect) -> CIImage {
-        let radius = max(12, min(rect.width, rect.height) / 5)
-        guard let filter = CIFilter(name: "CIGaussianBlur") else { return image }
-        filter.setValue(image.clampedToExtent(), forKey: kCIInputImageKey)
-        filter.setValue(radius, forKey: kCIInputRadiusKey)
-        guard let result = filter.outputImage?.cropped(to: rect) else { return image }
-        return result.composited(over: image)
-    }
-
-    /// 隐藏文字：取区域边缘的平均色填充，适合近纯色背景。
-    private func hideText(rect: CGRect, cgImage: CGImage, imageSize: CGSize, context: UIGraphicsImageRendererContext) {
-        let color = averageEdgeColor(of: rect, cgImage: cgImage, imageSize: imageSize) ?? .white
-        color.setFill()
-        context.fill(rect.insetBy(dx: -1, dy: -1))
-    }
-
-    private func averageEdgeColor(of rect: CGRect, cgImage: CGImage, imageSize: CGSize) -> UIColor? {
-        // 在区域上方取一条细带求平均色（上边缘通常是背景）
+    /// 隐藏文字：取区域上边缘的平均色（通常是背景色）。
+    private func averageEdgeColor(of rect: CGRect, source: CIImage, imageSize: CGSize) -> UIColor? {
         let band = CGRect(
             x: rect.minX,
             y: max(0, rect.minY - 3),
@@ -148,11 +173,9 @@ final class ImageRedactor {
         ).intersection(CGRect(origin: .zero, size: imageSize))
         guard !band.isNull, band.width >= 1, band.height >= 1 else { return nil }
 
-        let ciImage = CIImage(cgImage: cgImage)
-        let ciBand = ciRect(band, imageHeight: imageSize.height)
         guard let filter = CIFilter(name: "CIAreaAverage") else { return nil }
-        filter.setValue(ciImage, forKey: kCIInputImageKey)
-        filter.setValue(CIVector(cgRect: ciBand), forKey: kCIInputExtentKey)
+        filter.setValue(source, forKey: kCIInputImageKey)
+        filter.setValue(CIVector(cgRect: ciRect(band, imageHeight: imageSize.height)), forKey: kCIInputExtentKey)
         guard let output = filter.outputImage else { return nil }
 
         var pixel = [UInt8](repeating: 0, count: 4)

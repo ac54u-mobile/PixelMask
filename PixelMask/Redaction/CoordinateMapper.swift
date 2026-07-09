@@ -15,6 +15,16 @@ enum CoordinateMapper {
         )
     }
 
+    static func toView(_ point: CGPoint, imageSize: CGSize, containerSize: CGSize) -> CGPoint {
+        let frame = fittedImageFrame(imageSize: imageSize, containerSize: containerSize)
+        guard frame.width > 0 else { return .zero }
+        let scale = frame.width / imageSize.width
+        return CGPoint(
+            x: frame.minX + point.x * scale,
+            y: frame.minY + point.y * scale
+        )
+    }
+
     static func toView(_ rect: CGRect, imageSize: CGSize, containerSize: CGSize) -> CGRect {
         let frame = fittedImageFrame(imageSize: imageSize, containerSize: containerSize)
         guard frame.width > 0 else { return .zero }

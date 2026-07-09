@@ -102,18 +102,34 @@ struct EditorView: View {
 
     /// 打码效果实时显示在图上，这里只画细边框提示可点按：
     /// 实线 = 已打码（点按取消），虚线 = 检测到但未启用（点按开启）。
+    /// 斜向区域按四边形描边，水平区域用圆角矩形。
     private func regionOverlays(imageSize: CGSize, containerSize: CGSize) -> some View {
         ForEach(state.regions) { region in
-            let viewRect = CoordinateMapper.toView(region.rect, imageSize: imageSize, containerSize: containerSize)
-            if viewRect.width > 0 {
-                RoundedRectangle(cornerRadius: 3)
-                    .stroke(
-                        region.isEnabled ? Color.accentColor.opacity(0.85) : Color.secondary.opacity(0.7),
-                        style: StrokeStyle(lineWidth: 1.5, dash: region.isEnabled ? [] : [4, 3])
-                    )
-                    .frame(width: max(viewRect.width, 10), height: max(viewRect.height, 10))
-                    .position(x: viewRect.midX, y: viewRect.midY)
-                    .allowsHitTesting(false)
+            let strokeColor = region.isEnabled ? Color.accentColor.opacity(0.85) : Color.secondary.opacity(0.7)
+            let strokeStyle = StrokeStyle(lineWidth: 1.5, dash: region.isEnabled ? [] : [4, 3])
+
+            if let quad = region.quad {
+                Path { path in
+                    let points = quad.points.map {
+                        CoordinateMapper.toView($0, imageSize: imageSize, containerSize: containerSize)
+                    }
+                    path.move(to: points[0])
+                    for point in points.dropFirst() {
+                        path.addLine(to: point)
+                    }
+                    path.closeSubpath()
+                }
+                .stroke(strokeColor, style: strokeStyle)
+                .allowsHitTesting(false)
+            } else {
+                let viewRect = CoordinateMapper.toView(region.rect, imageSize: imageSize, containerSize: containerSize)
+                if viewRect.width > 0 {
+                    RoundedRectangle(cornerRadius: 3)
+                        .stroke(strokeColor, style: strokeStyle)
+                        .frame(width: max(viewRect.width, 10), height: max(viewRect.height, 10))
+                        .position(x: viewRect.midX, y: viewRect.midY)
+                        .allowsHitTesting(false)
+                }
             }
         }
     }

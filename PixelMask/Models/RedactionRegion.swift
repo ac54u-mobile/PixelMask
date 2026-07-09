@@ -33,9 +33,47 @@ enum DetectionKind: String {
     }
 }
 
+/// 任意四边形区域（图片像素坐标），用于斜向文字/二维码的精确打码。
+struct Quad: Equatable {
+    var topLeft: CGPoint
+    var topRight: CGPoint
+    var bottomRight: CGPoint
+    var bottomLeft: CGPoint
+
+    var points: [CGPoint] { [topLeft, topRight, bottomRight, bottomLeft] }
+
+    var boundingRect: CGRect {
+        let xs = points.map(\.x)
+        let ys = points.map(\.y)
+        guard let minX = xs.min(), let maxX = xs.max(),
+              let minY = ys.min(), let maxY = ys.max() else { return .zero }
+        return CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
+    }
+
+    /// 各顶点沿远离重心方向外扩，等价于矩形的负 inset。
+    func expanded(by amount: CGFloat) -> Quad {
+        let cx = points.map(\.x).reduce(0, +) / 4
+        let cy = points.map(\.y).reduce(0, +) / 4
+        func push(_ p: CGPoint) -> CGPoint {
+            let dx = p.x - cx
+            let dy = p.y - cy
+            let length = max(hypot(dx, dy), 0.001)
+            return CGPoint(x: p.x + dx / length * amount, y: p.y + dy / length * amount)
+        }
+        return Quad(
+            topLeft: push(topLeft),
+            topRight: push(topRight),
+            bottomRight: push(bottomRight),
+            bottomLeft: push(bottomLeft)
+        )
+    }
+}
+
 struct RedactionRegion: Identifiable, Equatable {
     let id: UUID
     var rect: CGRect
+    /// 非空时表示斜向区域，rect 为其外接矩形
+    let quad: Quad?
     let kind: DetectionKind
     let text: String
     var isEnabled: Bool
@@ -43,12 +81,14 @@ struct RedactionRegion: Identifiable, Equatable {
     init(
         id: UUID = UUID(),
         rect: CGRect,
+        quad: Quad? = nil,
         kind: DetectionKind,
         text: String = "",
         isEnabled: Bool = true
     ) {
         self.id = id
         self.rect = rect
+        self.quad = quad
         self.kind = kind
         self.text = text
         self.isEnabled = isEnabled

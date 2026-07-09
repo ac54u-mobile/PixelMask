@@ -109,7 +109,7 @@ final class EditorState: ObservableObject {
         }
         if let line = textLines.first(where: { $0.rect.insetBy(dx: -4, dy: -4).contains(imagePoint) }) {
             snapshot()
-            regions.append(RedactionRegion(rect: line.rect, kind: .textLine, text: line.text))
+            regions.append(RedactionRegion(rect: line.rect, quad: line.quad, kind: .textLine, text: line.text))
             schedulePreview()
         }
     }
