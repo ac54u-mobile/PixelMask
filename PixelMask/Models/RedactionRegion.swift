@@ -50,6 +50,30 @@ struct Quad: Equatable {
         return CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
     }
 
+    /// 矩形绕中心旋转后的四边形。
+    static func rotated(rect: CGRect, angle: CGFloat) -> Quad {
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        func rotate(_ p: CGPoint) -> CGPoint {
+            let dx = p.x - center.x
+            let dy = p.y - center.y
+            return CGPoint(
+                x: center.x + dx * cos(angle) - dy * sin(angle),
+                y: center.y + dx * sin(angle) + dy * cos(angle)
+            )
+        }
+        return Quad(
+            topLeft: rotate(CGPoint(x: rect.minX, y: rect.minY)),
+            topRight: rotate(CGPoint(x: rect.maxX, y: rect.minY)),
+            bottomRight: rotate(CGPoint(x: rect.maxX, y: rect.maxY)),
+            bottomLeft: rotate(CGPoint(x: rect.minX, y: rect.maxY))
+        )
+    }
+
+    /// 上边缘相对水平的倾角。
+    var angle: CGFloat {
+        atan2(topRight.y - topLeft.y, topRight.x - topLeft.x)
+    }
+
     /// 各顶点沿远离重心方向外扩，等价于矩形的负 inset。
     func expanded(by amount: CGFloat) -> Quad {
         let cx = points.map(\.x).reduce(0, +) / 4
@@ -72,8 +96,8 @@ struct Quad: Equatable {
 struct RedactionRegion: Identifiable, Equatable {
     let id: UUID
     var rect: CGRect
-    /// 非空时表示斜向区域，rect 为其外接矩形
-    let quad: Quad?
+    /// 非空时表示斜向区域；自动检测区域 rect 为其外接矩形，手动区域 rect 为旋转前的原始矩形
+    var quad: Quad?
     let kind: DetectionKind
     let text: String
     var isEnabled: Bool

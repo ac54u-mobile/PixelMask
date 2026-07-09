@@ -119,7 +119,9 @@ final class EditorState: ObservableObject {
 
     /// 点按：优先切换已有区域，否则命中文字行则整行打码。
     func handleTap(at imagePoint: CGPoint) {
-        if let index = regions.lastIndex(where: { $0.rect.insetBy(dx: -8, dy: -8).contains(imagePoint) }) {
+        if let index = regions.lastIndex(where: { region in
+            (region.quad?.boundingRect ?? region.rect).insetBy(dx: -8, dy: -8).contains(imagePoint)
+        }) {
             snapshot()
             regions[index].isEnabled.toggle()
             schedulePreview()
@@ -139,6 +141,18 @@ final class EditorState: ObservableObject {
         guard !clamped.isNull, clamped.width >= 4, clamped.height >= 4 else { return }
         snapshot()
         regions.append(RedactionRegion(rect: clamped, kind: .manual))
+        schedulePreview()
+    }
+
+    /// 旋转开始时记录一次快照，整个拖动过程只产生一步撤销。
+    func beginRotation() {
+        snapshot()
+    }
+
+    func updateRotation(id: UUID, angle: CGFloat) {
+        guard let index = regions.firstIndex(where: { $0.id == id }) else { return }
+        // 接近水平时吸附回矩形
+        regions[index].quad = abs(angle) < 0.03 ? nil : Quad.rotated(rect: regions[index].rect, angle: angle)
         schedulePreview()
     }
 

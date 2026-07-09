@@ -10,6 +10,7 @@ struct EditorView: View {
     @State private var showSettings = false
     @State private var justSaved = false
     @State private var showOriginal = false
+    @State private var rotatingRegionID: UUID?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -83,6 +84,8 @@ struct EditorView: View {
 
                     regionOverlays(imageSize: displayed.size, containerSize: containerSize)
 
+                    rotationHandles(imageSize: displayed.size, containerSize: containerSize)
+
                     if let dragRect {
                         Rectangle()
                             .fill(Color.accentColor.opacity(0.25))
@@ -110,6 +113,7 @@ struct EditorView: View {
                     }
                 }
             }
+            .coordinateSpace(name: "editorCanvas")
             .contentShape(Rectangle())
             .gesture(dragGesture(imageSize: state.image?.size ?? .zero, containerSize: containerSize))
             .onTapGesture { location in
@@ -154,6 +158,47 @@ struct EditorView: View {
                         .position(x: viewRect.midX, y: viewRect.midY)
                         .allowsHitTesting(false)
                 }
+            }
+        }
+    }
+
+    /// 手动框选的区域（启用时）显示旋转手柄，拖动手柄绕中心旋转。
+    private func rotationHandles(imageSize: CGSize, containerSize: CGSize) -> some View {
+        ForEach(state.regions) { region in
+            if region.kind == .manual, region.isEnabled {
+                let centerImage = CGPoint(x: region.rect.midX, y: region.rect.midY)
+                let centerView = CoordinateMapper.toView(centerImage, imageSize: imageSize, containerSize: containerSize)
+                let viewRect = CoordinateMapper.toView(region.rect, imageSize: imageSize, containerSize: containerSize)
+                let angle = region.quad?.angle ?? 0
+                let distance = viewRect.height / 2 + 26
+                let handleCenter = CGPoint(
+                    x: centerView.x + distance * sin(angle),
+                    y: centerView.y - distance * cos(angle)
+                )
+
+                Image(systemName: "arrow.triangle.2.circlepath")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 24, height: 24)
+                    .background(Circle().fill(Color.accentColor))
+                    .position(handleCenter)
+                    .gesture(
+                        DragGesture(minimumDistance: 1, coordinateSpace: .named("editorCanvas"))
+                            .onChanged { value in
+                                if rotatingRegionID != region.id {
+                                    rotatingRegionID = region.id
+                                    state.beginRotation()
+                                }
+                                let newAngle = atan2(
+                                    value.location.y - centerView.y,
+                                    value.location.x - centerView.x
+                                ) + .pi / 2
+                                state.updateRotation(id: region.id, angle: newAngle)
+                            }
+                            .onEnded { _ in
+                                rotatingRegionID = nil
+                            }
+                    )
             }
         }
     }
