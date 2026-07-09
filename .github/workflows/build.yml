@@ -1,0 +1,42 @@
+name: Build Unsigned IPA
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-26
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build unsigned IPA
+        run: |
+          xcodebuild clean -project Dama.xcodeproj -scheme Dama
+
+          # 编译并归档（禁用签名，TrollStore 可直接安装）
+          xcodebuild archive \
+            -project Dama.xcodeproj \
+            -scheme Dama \
+            -archivePath ./build/Dama.xcarchive \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            ONLY_ACTIVE_ARCH=NO
+
+          mkdir -p Payload
+          cp -R ./build/Dama.xcarchive/Products/Applications/Dama.app Payload/
+          zip -r Dama-unsigned.ipa Payload
+          rm -rf Payload
+
+          ls -lh Dama-unsigned.ipa
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Dama-unsigned-ipa
+          path: Dama-unsigned.ipa
+          retention-days: 30
