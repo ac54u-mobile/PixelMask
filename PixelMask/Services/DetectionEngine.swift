@@ -17,7 +17,10 @@ struct TextLine: Identifiable {
 /// 端上检测引擎：Vision OCR + 人脸 + 二维码 + 规则分类，全程离线。
 final class DetectionEngine {
 
-    func detect(in image: UIImage) async throws -> DetectionOutput {
+    func detect(
+        in image: UIImage,
+        disabledKinds: Set<DetectionKind> = []
+    ) async throws -> DetectionOutput {
         guard let cgImage = normalizedCGImage(from: image) else {
             return DetectionOutput(sensitiveRegions: [], textLines: [])
         }
@@ -45,6 +48,7 @@ final class DetectionEngine {
             textLines.append(TextLine(text: text, rect: lineRect))
 
             for match in SensitiveTextClassifier.matches(in: text) {
+                guard !disabledKinds.contains(match.kind) else { continue }
                 let rect: CGRect
                 if let box = try? candidate.boundingBox(for: match.range) {
                     rect = imageRect(from: box.boundingBox, imageSize: imageSize)
@@ -56,14 +60,18 @@ final class DetectionEngine {
             }
         }
 
-        for observation in faceRequest.results ?? [] {
-            let rect = imageRect(from: observation.boundingBox, imageSize: imageSize)
-            regions.append(RedactionRegion(rect: rect, kind: .face))
+        if !disabledKinds.contains(.face) {
+            for observation in faceRequest.results ?? [] {
+                let rect = imageRect(from: observation.boundingBox, imageSize: imageSize)
+                regions.append(RedactionRegion(rect: rect, kind: .face))
+            }
         }
 
-        for observation in barcodeRequest.results ?? [] {
-            let rect = imageRect(from: observation.boundingBox, imageSize: imageSize)
-            regions.append(RedactionRegion(rect: rect, kind: .qrCode))
+        if !disabledKinds.contains(.qrCode) {
+            for observation in barcodeRequest.results ?? [] {
+                let rect = imageRect(from: observation.boundingBox, imageSize: imageSize)
+                regions.append(RedactionRegion(rect: rect, kind: .qrCode))
+            }
         }
 
         return DetectionOutput(sensitiveRegions: regions, textLines: textLines)

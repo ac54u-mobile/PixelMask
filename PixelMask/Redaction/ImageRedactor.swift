@@ -9,7 +9,8 @@ final class ImageRedactor {
         image: UIImage,
         regions: [RedactionRegion],
         style: RedactionStyle,
-        solidColor: UIColor
+        solidColor: UIColor,
+        watermark: String? = nil
     ) -> UIImage {
         guard let cgImage = image.cgImage else { return image }
         let imageSize = CGSize(width: cgImage.width, height: cgImage.height)
@@ -20,7 +21,7 @@ final class ImageRedactor {
             .map { $0.rect.insetBy(dx: -2, dy: -2).intersection(bounds) }
             .filter { !$0.isNull && $0.width >= 1 && $0.height >= 1 }
 
-        guard !activeRects.isEmpty else { return image }
+        guard !activeRects.isEmpty || watermark != nil else { return image }
 
         var output = CIImage(cgImage: cgImage)
 
@@ -65,7 +66,49 @@ final class ImageRedactor {
             case .pixelate, .blur:
                 break
             }
+
+            if let watermark {
+                drawTiledWatermark(watermark, imageSize: imageSize, cgContext: context.cgContext)
+            }
         }
+    }
+
+    /// 斜向平铺的半透明文字水印。
+    private func drawTiledWatermark(_ text: String, imageSize: CGSize, cgContext: CGContext) {
+        let fontSize = max(20, min(imageSize.width, imageSize.height) / 18)
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: fontSize, weight: .semibold),
+            .foregroundColor: UIColor.white.withAlphaComponent(0.30),
+        ]
+        let shadowAttributes: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: fontSize, weight: .semibold),
+            .foregroundColor: UIColor.black.withAlphaComponent(0.18),
+        ]
+        let textSize = (text as NSString).size(withAttributes: attributes)
+        let stepX = textSize.width + fontSize * 3
+        let stepY = textSize.height + fontSize * 3.5
+
+        cgContext.saveGState()
+        cgContext.translateBy(x: imageSize.width / 2, y: imageSize.height / 2)
+        cgContext.rotate(by: -.pi / 6)
+
+        // 旋转后需要覆盖对角线范围
+        let radius = hypot(imageSize.width, imageSize.height) / 2 + max(stepX, stepY)
+        var y = -radius
+        var rowIndex = 0
+        while y < radius {
+            // 隔行错位，避免整齐网格
+            var x = -radius + (rowIndex % 2 == 0 ? 0 : stepX / 2)
+            while x < radius {
+                let point = CGPoint(x: x, y: y)
+                (text as NSString).draw(at: CGPoint(x: point.x + 1, y: point.y + 1), withAttributes: shadowAttributes)
+                (text as NSString).draw(at: point, withAttributes: attributes)
+                x += stepX
+            }
+            y += stepY
+            rowIndex += 1
+        }
+        cgContext.restoreGState()
     }
 
     private func pixelate(_ image: CIImage, in rect: CGRect) -> CIImage {
@@ -79,23 +122,12 @@ final class ImageRedactor {
         return result.composited(over: image)
     }
 
-    /// 毛玻璃：高斯模糊 + 降饱和微提亮 + 半透明白色蒙层。
     private func blur(_ image: CIImage, in rect: CGRect) -> CIImage {
-        let radius = max(16, min(rect.width, rect.height) / 4)
+        let radius = max(12, min(rect.width, rect.height) / 5)
         guard let filter = CIFilter(name: "CIGaussianBlur") else { return image }
         filter.setValue(image.clampedToExtent(), forKey: kCIInputImageKey)
         filter.setValue(radius, forKey: kCIInputRadiusKey)
-        guard var result = filter.outputImage?.cropped(to: rect) else { return image }
-
-        if let controls = CIFilter(name: "CIColorControls") {
-            controls.setValue(result, forKey: kCIInputImageKey)
-            controls.setValue(0.72, forKey: kCIInputSaturationKey)
-            controls.setValue(0.05, forKey: kCIInputBrightnessKey)
-            result = controls.outputImage ?? result
-        }
-
-        let frost = CIImage(color: CIColor(red: 1, green: 1, blue: 1, alpha: 0.24)).cropped(to: rect)
-        result = frost.composited(over: result).cropped(to: rect)
+        guard let result = filter.outputImage?.cropped(to: rect) else { return image }
         return result.composited(over: image)
     }
 

@@ -6,6 +6,7 @@ struct EditorView: View {
     @State private var dragStart: CGPoint?
     @State private var dragRect: CGRect?
     @State private var showShareSheet = false
+    @State private var showSettings = false
     @State private var justSaved = false
 
     var body: some View {
@@ -43,6 +44,9 @@ struct EditorView: View {
                let data = result.jpegData(compressionQuality: 0.92) {
                 ShareSheet(items: [ShareableImage.temporaryFileURL(for: data) ?? data])
             }
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsSheet(state: state)
         }
     }
 
@@ -127,24 +131,52 @@ struct EditorView: View {
 
     private var toolbar: some View {
         VStack(spacing: 10) {
-            HStack {
+            HStack(spacing: 18) {
+                Button {
+                    state.undo()
+                } label: {
+                    Image(systemName: "arrow.uturn.backward")
+                }
+                .disabled(!state.canUndo)
+
+                Button {
+                    state.redo()
+                } label: {
+                    Image(systemName: "arrow.uturn.forward")
+                }
+                .disabled(!state.canRedo)
+
                 Text("已选 \(state.enabledCount) 处")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+
                 Spacer()
+
+                Button("全选") { state.enableAll() }
+                    .font(.footnote)
+                Button("清空") { state.disableAll() }
+                    .font(.footnote)
+
                 if state.style == .solid {
                     ColorPicker("", selection: $state.solidColor, supportsOpacity: false)
                         .labelsHidden()
                         .frame(width: 32)
                 }
+
                 Button {
                     state.detect()
                 } label: {
-                    Label("重新识别", systemImage: "arrow.clockwise")
-                        .font(.footnote)
+                    Image(systemName: "arrow.clockwise")
                 }
                 .disabled(state.isDetecting)
+
+                Button {
+                    showSettings = true
+                } label: {
+                    Image(systemName: "gearshape")
+                }
             }
+            .font(.system(size: 16))
             .padding(.horizontal, 16)
 
             HStack(spacing: 8) {
