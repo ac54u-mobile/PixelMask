@@ -50,28 +50,14 @@ struct Quad: Equatable {
         return CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
     }
 
-    /// 矩形绕中心旋转后的四边形。
-    static func rotated(rect: CGRect, angle: CGFloat) -> Quad {
-        let center = CGPoint(x: rect.midX, y: rect.midY)
-        func rotate(_ p: CGPoint) -> CGPoint {
-            let dx = p.x - center.x
-            let dy = p.y - center.y
-            return CGPoint(
-                x: center.x + dx * cos(angle) - dy * sin(angle),
-                y: center.y + dx * sin(angle) + dy * cos(angle)
-            )
-        }
-        return Quad(
-            topLeft: rotate(CGPoint(x: rect.minX, y: rect.minY)),
-            topRight: rotate(CGPoint(x: rect.maxX, y: rect.minY)),
-            bottomRight: rotate(CGPoint(x: rect.maxX, y: rect.maxY)),
-            bottomLeft: rotate(CGPoint(x: rect.minX, y: rect.maxY))
+    /// 整体平移。
+    func offset(dx: CGFloat, dy: CGFloat) -> Quad {
+        Quad(
+            topLeft: CGPoint(x: topLeft.x + dx, y: topLeft.y + dy),
+            topRight: CGPoint(x: topRight.x + dx, y: topRight.y + dy),
+            bottomRight: CGPoint(x: bottomRight.x + dx, y: bottomRight.y + dy),
+            bottomLeft: CGPoint(x: bottomLeft.x + dx, y: bottomLeft.y + dy)
         )
-    }
-
-    /// 上边缘相对水平的倾角。
-    var angle: CGFloat {
-        atan2(topRight.y - topLeft.y, topRight.x - topLeft.x)
     }
 
     /// 各顶点沿远离重心方向外扩，等价于矩形的负 inset。

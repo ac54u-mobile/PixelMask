@@ -144,16 +144,26 @@ final class EditorState: ObservableObject {
         schedulePreview()
     }
 
-    /// 旋转开始时记录一次快照，整个拖动过程只产生一步撤销。
-    func beginRotation() {
+    /// 拖动移动开始时记录一次快照，整个拖动过程只产生一步撤销。
+    func beginRegionDrag() {
         snapshot()
     }
 
-    func updateRotation(id: UUID, angle: CGFloat) {
+    /// 以拖动起点时的区域状态（base）为基准整体平移，避免逐帧累积误差。
+    func moveRegion(id: UUID, base: RedactionRegion, dx: CGFloat, dy: CGFloat) {
         guard let index = regions.firstIndex(where: { $0.id == id }) else { return }
-        // 接近水平时吸附回矩形
-        regions[index].quad = abs(angle) < 0.03 ? nil : Quad.rotated(rect: regions[index].rect, angle: angle)
+        var moved = base
+        moved.rect = base.rect.offsetBy(dx: dx, dy: dy)
+        moved.quad = base.quad?.offset(dx: dx, dy: dy)
+        regions[index] = moved
         schedulePreview()
+    }
+
+    /// 命中已启用的区域则返回之（拖动移动的起点判定）。
+    func enabledRegion(at imagePoint: CGPoint) -> RedactionRegion? {
+        regions.last { region in
+            region.isEnabled && (region.quad?.boundingRect ?? region.rect).insetBy(dx: -8, dy: -8).contains(imagePoint)
+        }
     }
 
     func enableAll() {

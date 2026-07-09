@@ -4,13 +4,17 @@ struct EditorView: View {
     @ObservedObject var state: EditorState
     @Environment(\.dismiss) private var dismiss
 
-    @State private var dragStart: CGPoint?
     @State private var dragRect: CGRect?
     @State private var showShareSheet = false
     @State private var showSettings = false
     @State private var justSaved = false
     @State private var showOriginal = false
-    @State private var rotatingRegionID: UUID?
+
+    private enum CanvasDragMode {
+        case select
+        case move(id: UUID, base: RedactionRegion)
+    }
+    @State private var dragMode: CanvasDragMode?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -84,8 +88,6 @@ struct EditorView: View {
 
                     regionOverlays(imageSize: displayed.size, containerSize: containerSize)
 
-                    rotationHandles(imageSize: displayed.size, containerSize: containerSize)
-
                     if let dragRect {
                         Rectangle()
                             .fill(Color.accentColor.opacity(0.25))
@@ -113,7 +115,6 @@ struct EditorView: View {
                     }
                 }
             }
-            .coordinateSpace(name: "editorCanvas")
             .contentShape(Rectangle())
             .gesture(dragGesture(imageSize: state.image?.size ?? .zero, containerSize: containerSize))
             .onTapGesture { location in
@@ -134,7 +135,7 @@ struct EditorView: View {
     private func regionOverlays(imageSize: CGSize, containerSize: CGSize) -> some View {
         ForEach(state.regions) { region in
             let strokeColor = region.isEnabled ? Color.accentColor.opacity(0.85) : Color.secondary.opacity(0.7)
-            let strokeStyle = StrokeStyle(lineWidth: 1.5, dash: region.isEnabled ? [] : [4, 3])
+            let strokeStyle = StrokeStyle(lineWidth: 1.5, dash: [4, 3])
 
             if let quad = region.quad {
                 Path { path in
@@ -162,65 +163,51 @@ struct EditorView: View {
         }
     }
 
-    /// 手动框选的区域（启用时）显示旋转手柄，拖动手柄绕中心旋转。
-    private func rotationHandles(imageSize: CGSize, containerSize: CGSize) -> some View {
-        ForEach(state.regions) { region in
-            if region.kind == .manual, region.isEnabled {
-                let centerImage = CGPoint(x: region.rect.midX, y: region.rect.midY)
-                let centerView = CoordinateMapper.toView(centerImage, imageSize: imageSize, containerSize: containerSize)
-                let viewRect = CoordinateMapper.toView(region.rect, imageSize: imageSize, containerSize: containerSize)
-                let angle = region.quad?.angle ?? 0
-                let distance = viewRect.height / 2 + 26
-                let handleCenter = CGPoint(
-                    x: centerView.x + distance * sin(angle),
-                    y: centerView.y - distance * cos(angle)
-                )
-
-                Image(systemName: "arrow.triangle.2.circlepath")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 24, height: 24)
-                    .background(Circle().fill(Color.accentColor))
-                    .position(handleCenter)
-                    .gesture(
-                        DragGesture(minimumDistance: 1, coordinateSpace: .named("editorCanvas"))
-                            .onChanged { value in
-                                if rotatingRegionID != region.id {
-                                    rotatingRegionID = region.id
-                                    state.beginRotation()
-                                }
-                                let newAngle = atan2(
-                                    value.location.y - centerView.y,
-                                    value.location.x - centerView.x
-                                ) + .pi / 2
-                                state.updateRotation(id: region.id, angle: newAngle)
-                            }
-                            .onEnded { _ in
-                                rotatingRegionID = nil
-                            }
-                    )
-            }
-        }
-    }
-
+    /// 拖动起点落在已打码区域内 = 移动该区域，落在空白处 = 框选新区域。
     private func dragGesture(imageSize: CGSize, containerSize: CGSize) -> some Gesture {
         DragGesture(minimumDistance: 12)
             .onChanged { value in
-                if dragStart == nil { dragStart = value.startLocation }
-                let start = dragStart ?? value.startLocation
-                dragRect = CGRect(
-                    x: min(start.x, value.location.x),
-                    y: min(start.y, value.location.y),
-                    width: abs(value.location.x - start.x),
-                    height: abs(value.location.y - start.y)
-                )
+                guard imageSize != .zero else { return }
+
+                if dragMode == nil {
+                    let startPoint = CoordinateMapper.toImage(value.startLocation, imageSize: imageSize, containerSize: containerSize)
+                    if let region = state.enabledRegion(at: startPoint) {
+                        dragMode = .move(id: region.id, base: region)
+                        state.beginRegionDrag()
+                    } else {
+                        dragMode = .select
+                    }
+                }
+
+                switch dragMode {
+                case .move(let id, let base):
+                    let frame = CoordinateMapper.fittedImageFrame(imageSize: imageSize, containerSize: containerSize)
+                    guard frame.width > 0 else { return }
+                    let scale = imageSize.width / frame.width
+                    state.moveRegion(
+                        id: id,
+                        base: base,
+                        dx: value.translation.width * scale,
+                        dy: value.translation.height * scale
+                    )
+                case .select:
+                    let start = value.startLocation
+                    dragRect = CGRect(
+                        x: min(start.x, value.location.x),
+                        y: min(start.y, value.location.y),
+                        width: abs(value.location.x - start.x),
+                        height: abs(value.location.y - start.y)
+                    )
+                case nil:
+                    break
+                }
             }
             .onEnded { _ in
-                if let dragRect, imageSize != .zero {
+                if case .select = dragMode, let dragRect, imageSize != .zero {
                     let imageRect = CoordinateMapper.toImage(dragRect, imageSize: imageSize, containerSize: containerSize)
                     state.addManualRegion(imageRect)
                 }
-                dragStart = nil
+                dragMode = nil
                 dragRect = nil
             }
     }
@@ -298,7 +285,7 @@ struct EditorView: View {
             }
             .padding(.horizontal, 12)
 
-            Text("轻点整行打码 · 拖动框选 · 双指缩放 · 长按看原图")
+            Text("轻点整行打码 · 空白处框选 · 拖动区域移动 · 双指缩放")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
         }
